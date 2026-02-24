@@ -1,0 +1,32 @@
+@model IEnumerable<BookMyRoom.Models.Reservation>
+@{
+    var rooms = (IDictionary<Guid, Room>)ViewBag.Rooms;
+}
+<h2>Moje rezerwacje</h2>
+@if(TempData["Error"] != null){<div class="alert alert-danger">@TempData["Error"]</div>}
+@if(TempData["Message"] != null){<div class="alert alert-success">@TempData["Message"]</div>}
+
+<p>
+    <a class="btn btn-secondary" asp-controller="Booking" asp-action="ExportMyBookings">Export iCalendar (.ics)</a>
+</p>
+<table class="table">
+    <thead>
+        <tr><th>Sala</th><th>Start</th><th>Koniec</th><th>Akcje</th></tr>
+    </thead>
+    <tbody>
+    @foreach(var r in Model){
+        <tr>
+	        <td>@rooms[r.RoomId].Name</td>
+            <td>@r.Start</td>
+            <td>@r.End</td>
+            <td>
+                <form asp-controller="Booking" asp-action="Cancel" method="post">
+                    <input type="hidden" name="id" value="@r.Id" />
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-danger">Anuluj</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

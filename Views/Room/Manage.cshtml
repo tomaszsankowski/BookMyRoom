@@ -1,0 +1,63 @@
+@model IEnumerable<BookMyRoom.Models.Room>
+@{
+    ViewData["Title"] = "Manage Rooms";
+}
+<h2>Zarzadzanie salkami</h2>
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+<form asp-action="Init" method="post">
+    <button type="submit" class="btn btn-warning">Init sample data</button>
+</form>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <h4>Istniejace salki</h4>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nazwa</th>
+                    <th>Pojemnosc</th>
+                    <th>Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.Name</td>
+                        <td>@r.Capacity</td>
+                        <td>
+                            <form asp-action="Delete" method="post">
+                                <input type="hidden" name="id" value="@r.Id" />
+                                <button type="submit" class="btn btn-sm btn-danger">Usun</button>
+                                @Html.AntiForgeryToken()
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-6">
+        <h4>Dodaj nowa salke</h4>
+        <form asp-action="Add" method="post">
+            <div class="form-group">
+                <label>Nazwa</label>
+                <input name="Name" class="form-control" />
+            </div>
+            <div class="form-group">
+                <label>Pojemnosc</label>
+                <input name="Capacity" type="number" min="1" class="form-control" />
+            </div>
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary" style="margin-top:20px">Dodaj</button>
+        </form>
+    </div>
+</div>

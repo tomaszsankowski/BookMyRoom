@@ -1,0 +1,156 @@
+@{
+    var rooms = (IReadOnlyCollection<Room>)ViewBag.Rooms;
+}
+<h2>Kalendarz rezerwacji</h2>
+<div class="mb-3">
+    <label>Data:</label>
+    <input type="date" id="dayPicker" class="form-control" style="max-width:220px" />
+</div>
+<table class="table table-bordered" id="calendarTable">
+    <thead>
+        <tr>
+            <th>Godzina</th>
+            @foreach(var r in rooms){<th>@r.Name (@r.Capacity)</th>}
+        </tr>
+    </thead>
+    <tbody>
+        @for(int h=8; h<=18; h++){
+            <tr>
+                <td>@(h.ToString("00")):00</td>
+                @foreach(var r in rooms){
+                    <td data-room="@r.Id" data-hour="@h" class="slot" style="cursor:pointer"></td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="createForm" style="display:none">
+    <div class="card" style="max-width:420px">
+        <div class="card-body">
+            <h5 class="card-title">Nowa rezerwacja</h5>
+            <div class="mb-2">
+	            <label>Start</label>
+	            <input type="datetime-local" id="startInput" class="form-control" step="3600" />
+            </div>
+            <div class="mb-2">
+                <label>Koniec</label>
+                <input type="datetime-local" id="endInput" class="form-control" step="3600" />
+            </div>
+            <div class="d-flex gap-2">
+                <button id="saveBtn" class="btn btn-primary" type="button">Zapisz</button>
+                <button id="cancelBtn" class="btn btn-secondary" type="button">Anuluj</button>
+            </div>
+            <div id="errorBox" class="text-danger mt-2"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts{
+<script>
+(function(){
+    const dayPicker = document.getElementById('dayPicker');
+    const table = document.getElementById('calendarTable');
+    const form = document.getElementById('createForm');
+    const startInput = document.getElementById('startInput');
+    const endInput = document.getElementById('endInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const errorBox = document.getElementById('errorBox');
+    let selectedRoom = null;
+
+    const today = new Date();
+    dayPicker.value = today.toISOString().substring(0,10);
+
+    function fetchDay(){
+        const day = dayPicker.value;
+        if(!day) return;
+        fetch(`/Booking/GetForDay?day=${day}`)
+            .then(r=>r.json())
+            .then(data=>render(data));
+    }
+
+    function render(reservations) {
+	    table.querySelectorAll('td.slot').forEach(td => {
+		    td.textContent = '';
+		    td.className = 'slot';
+		    td.title = '';
+	    });
+
+	    reservations.forEach(r => {
+		    const start = new Date(r.start);
+		    const end = new Date(r.end);
+		    const base = dayPicker.value;
+
+		    for (let h = 8; h <= 18; h++) {
+			    const cell = table.querySelector(`[data-room="${r.roomId}"][data-hour="${h}"]`);
+			    if (!cell) continue;
+
+			    const cellStart = new Date(`${base}T${String(h).padStart(2,'0')}:00:00`);
+			    const cellEnd = new Date(`${base}T${String(h+1).padStart(2,'0')}:00:00`);
+
+			    if (start < cellEnd && end > cellStart) {
+				    const div = document.createElement('div');
+				    div.textContent = `${start.toLocaleTimeString()} - ${end.toLocaleTimeString()} (${r.userLogin})`;
+				    div.classList.add('small');
+				    cell.appendChild(div);
+
+				    if (!cell.classList.contains('bg-danger')) {
+					    cell.classList.add('bg-danger','text-white');
+				    }
+			    }
+		    }
+	    });
+    }
+
+    table.addEventListener('click', (e)=>{
+        const td = e.target.closest('td.slot');
+        if(!td) return;
+        if(td.textContent.trim()) return;
+        selectedRoom = td.getAttribute('data-room');
+        const hour = td.getAttribute('data-hour');
+        const date = dayPicker.value;
+        const startVal = `${date}T${String(hour).padStart(2,'0')}:00`;
+        const endVal = `${date}T${String(+hour+1).padStart(2,'0')}:00`;
+        startInput.value = startVal;
+        endInput.value = endVal;
+        errorBox.textContent = '';
+        form.style.display = 'block';
+    });
+
+    cancelBtn.addEventListener('click', ()=>{form.style.display='none'; errorBox.textContent=''});
+
+    saveBtn.addEventListener('click', ()=>{
+        errorBox.textContent='';
+        const start = startInput.value;
+        const end = endInput.value;
+        if(!start || !end){ errorBox.textContent='Podaj poprawne daty'; return; }
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        if(endDate <= startDate){ errorBox.textContent='Koniec musi byc po starcie'; return; }
+        const durationMs = endDate - startDate;
+        if(durationMs < 15*60*1000){ errorBox.textContent='Minimalny czas to 15 minut'; return; }
+        if(durationMs > 3*60*60*1000){ errorBox.textContent='Maksymalny czas to 3 godziny'; return; }
+
+        fetch('/Booking/Create', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ roomId: selectedRoom, start: start, end: end })
+        })
+        .then(r=>r.json())
+        .then(res=>{
+            if(res.ok){
+                form.style.display='none';
+                fetchDay();
+            } else {
+                errorBox.textContent = res.error || 'Blad';
+            }
+        })
+        .catch(()=>{ errorBox.textContent='Blad sieci'; });
+    });
+
+    dayPicker.addEventListener('change', fetchDay);
+    fetchDay();
+})();
+</script>
+}
