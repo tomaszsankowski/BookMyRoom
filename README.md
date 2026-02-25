@@ -2,6 +2,8 @@
 
 A meeting room booking system built with **ASP.NET Core 8 MVC**. The application allows users to browse an interactive calendar, reserve conference rooms for specific time slots, manage their bookings, and export reservations to iCalendar (`.ics`) format. Administrators can manage the room inventory.
 
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/b88c8423-034f-4ec3-b5d4-fc97856e363f" />
+
 ## Features
 
 | Feature                  | Description                                                                                                           |
